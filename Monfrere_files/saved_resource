@@ -1,0 +1,106 @@
+(function() {
+  function runExperiment() {
+    try {
+    if (localStorage.getItem('cm_preview')) {
+      localStorage.removeItem('cm_preview');
+      console.log('Cleared stale cm_preview from localStorage');
+    }
+  } catch (e) {
+    console.error('Error clearing cm_preview localStorage:', e);
+  }
+  function setExperimentUserProperties(userProps, callback) {
+    var maxRetries = 30; // 30 retries * 100ms = 3 seconds max wait
+    var retryDelay = 100; // 100ms between retries
+    var attempt = 0;
+    var callbackFired = false;
+
+    function trySet() {
+      try {
+        if (typeof gtag === 'function') {
+          gtag('set', 'user_properties', userProps);
+          console.log('[ClickMint] User properties set:', userProps);
+          if (callback && !callbackFired) {
+            callbackFired = true;
+            callback(true);
+          }
+          return true;
+        } else if (attempt < maxRetries) {
+          attempt++;
+          setTimeout(trySet, retryDelay);
+          return false;
+        } else {
+          console.warn('[ClickMint] gtag not available after ' + (maxRetries * retryDelay / 1000) + 's, user properties not set');
+          if (callback && !callbackFired) {
+            callbackFired = true;
+            callback(false);
+          }
+          return false;
+        }
+      } catch (e) {
+        console.error('[ClickMint] Error setting user properties:', e);
+        if (callback && !callbackFired) {
+          callbackFired = true;
+          callback(false);
+        }
+        return false;
+      }
+    }
+
+    trySet();
+  }
+
+  function trackExperimentEvent(eventName, params) {
+    var maxRetries = 30; // 30 retries * 100ms = 3 seconds max wait
+    var retryDelay = 100; // 100ms between retries
+    var attempt = 0;
+
+    function tryTrack() {
+      try {
+        if (typeof gtag === 'function') {
+          gtag('event', eventName, params);
+          console.log('[ClickMint] Tracked:', eventName, params);
+          return true;
+        } else if (attempt < maxRetries) {
+          attempt++;
+          setTimeout(tryTrack, retryDelay);
+          return false;
+        } else {
+          console.warn('[ClickMint] gtag not available after ' + (maxRetries * retryDelay / 1000) + 's, skipping tracking:', eventName);
+          return false;
+        }
+      } catch (e) {
+        console.error('[ClickMint] Error tracking event:', e);
+        return false;
+      }
+    }
+
+    tryTrack();
+  }
+
+  // Set control user property for pages with no experiment configured
+  setExperimentUserProperties({
+    experiment_variant: 'exp_e3b0c442',
+    page_path: '/'
+  }, function(success) {
+    // Track as no experiment (control group - no experiment exists for this path)
+    trackExperimentEvent('cm_tracking', {
+      experiment_id: '',
+      outcome_id: '',
+      outcome_index: '0',
+      outcome_type: 'control',
+      experiment_mode: 'production',
+      experiment_variant: 'exp_e3b0c442',
+      page_path: '/',
+      event_type: 'control'
+    });
+  });
+
+  console.log('[ClickMint] No experiment configured for path - tracking as control (page: /, slug: exp_e3b0c442)');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runExperiment);
+  } else {
+    runExperiment();
+  }
+})();
