@@ -1,8 +1,3 @@
-# Ignore datasets to protect PII and prevent massive uploads
-*.csv
-*.xlsx
-*.xlsm
-
 # Python environments and cache
 __pycache__/
 *.pyc
