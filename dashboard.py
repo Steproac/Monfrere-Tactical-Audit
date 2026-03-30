@@ -41,6 +41,7 @@ st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 # --- CACHE DATA LOADERS ---
 @st.cache_data
 def load_shopify_data():
+    # Cache Bust 1
     files = ["Shopify_orders_export_1.csv", "Shopify_orders_export_2.csv"]
     dfs = []
     for f in files:
@@ -80,6 +81,7 @@ def load_abandoned_checkouts():
 
 @st.cache_data
 def load_meta_data():
+    # Cache Bust 1
     files = [
         "Meta_Daily_MONFRERE-Ads-Fe-28-2023-Dec-31-2023 _v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2024-Dec-31-2024_v2.csv",
@@ -113,6 +115,7 @@ def load_awin_raw_data():
 
 @st.cache_data
 def load_ga_merch_data():
+    # Cache Bust 1
     ga_file = "GA Ecommerce_purchases_Item_name032026.csv"
     if not os.path.exists(ga_file):
         return pd.DataFrame()
