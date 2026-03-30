@@ -72,6 +72,7 @@ def load_shopify_data():
 
 @st.cache_data
 def load_abandoned_checkouts():
+    # Cache Bust 1
     f = "Shopify_Abandoned checkouts_export_032026.csv"
     if os.path.exists(f):
         df = pd.read_csv(f, low_memory=False)
@@ -105,6 +106,7 @@ def load_meta_data():
 
 @st.cache_data
 def load_awin_raw_data():
+    # Cache Bust 1
     if os.path.exists("AWIN transactions_103309_2024-01-01_2026-03-06.csv"):
         awin_df = pd.read_csv("AWIN transactions_103309_2024-01-01_2026-03-06.csv", low_memory=False)
         awin_df['date'] = pd.to_datetime(awin_df['date'], errors='coerce', utc=True)
