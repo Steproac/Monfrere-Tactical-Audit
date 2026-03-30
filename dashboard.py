@@ -282,6 +282,7 @@ try:
     true_cac = total_meta_spend / new_customers if new_customers > 0 else 0
 
     st.header("1. True Business Analytics (MER)")
+    st.markdown("A unified view of your highest-level financial performance. **True Blended ROAS** incorporates Shopify revenue divided by actual Meta ad spend, while **LTV** and **CAC** strip out return-customer noise to analyze genuine acquisition health.")
     colS1, colS2, colS3, colS4, colS5 = st.columns(5)
     colS1.metric("Filtered Store Revenue", f"${total_store_rev:,.0f}")
     colS2.metric("Filtered True ROAS", f"{true_blended_roas:.2f}x")
@@ -319,6 +320,7 @@ try:
             fig_fab_rev.update_traces(texttemplate='$%{text:,.0f}', textposition='outside')
             fig_fab_rev = style_plotly_fig(fig_fab_rev)
             st.plotly_chart(fig_fab_rev, use_container_width=True)
+            st.caption("🎯 **Insight:** Identifies the fabric pillars driving the most gross revenue, highlighting where customer demand is aggregating.")
             
         with colM2:
             # Conversion Rate Bubble / Bar
@@ -330,6 +332,7 @@ try:
             fig_fab_cr.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
             fig_fab_cr = style_plotly_fig(fig_fab_cr)
             st.plotly_chart(fig_fab_cr, use_container_width=True)
+            st.caption("⚖️ **Insight:** Highlights friction in the funnel. Fabrics with high views but low conversion rates signify pricing resistance, sizing issues, or visual asset friction.")
             
         # Sales Velocity by Body & Fabric Layout (Matrix)
         st.markdown("#### Item Revenue Matrix: Body vs Fabric")
@@ -354,6 +357,7 @@ try:
             fig_matrix = style_plotly_fig(fig_matrix)
             fig_matrix.update_layout(height=600)
             st.plotly_chart(fig_matrix, use_container_width=True)
+            st.caption("🧩 **Insight:** A granular matrix isolating performance by body silhouette overlaid with fabric. Extremely useful for identifying micro-trends (e.g., specific fits working only in specific washes).")
     else:
         st.warning("Google Analytics Ecom Dataset not found or filters yielded no valid merchandising data.")
 
@@ -376,6 +380,7 @@ try:
             )
             fig_time = style_plotly_fig(fig_time)
             st.plotly_chart(fig_time, use_container_width=True)
+            st.caption("📈 **Insight:** Tracks whether brand growth is sustained by healthy new customer acquisition or artificially inflated by returning customers.")
 
     with col_chart2:
         discount_split = shopify_filtered.groupby('Used_Discount')['Total'].sum().reset_index()
@@ -387,6 +392,7 @@ try:
             )
             fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#E0E6ED"))
             st.plotly_chart(fig_pie, use_container_width=True)
+            st.caption("📉 **Insight:** Analyzes brand equity and margin decay by visualizing how much revenue depends on discount codes vs. full-price conversions.")
 
     valid_order_names = shopify_filtered['Name'].tolist()
     filtered_lines = order_lines_df[order_lines_df['Name'].isin(valid_order_names) & ~order_lines_df['Lineitem name'].str.contains('Protection', case=False, na=False)]
@@ -403,6 +409,7 @@ try:
             fig_prod = style_plotly_fig(fig_prod)
             fig_prod.update_layout(margin=dict(l=250))
             st.plotly_chart(fig_prod, use_container_width=True)
+            st.caption("⭐ **Insight:** The exact Shopify SKUs acting as your 'Hero' products, driving the bulk of top-line revenue.")
 
 
     # -----------------------------------------------
@@ -434,6 +441,7 @@ try:
             fig_waste.update_layout(height=max(400, len(top_wasted) * 25))
             fig_waste = style_plotly_fig(fig_waste)
             st.plotly_chart(fig_waste, use_container_width=True)
+            st.caption("⚠️ **Insight:** Identifies 'Kill Switch' Meta Ads. These creatives have spent aggressively without generating a single purchase, representing pure wasted spend.")
         else:
             st.info("No ads meet the statistical failure threshold based on current filters.")
 
@@ -453,6 +461,7 @@ try:
             )
             fig_aff = style_plotly_fig(fig_aff)
             st.plotly_chart(fig_aff, use_container_width=True)
+            st.caption("🔄 **Insight:** Evaluates affiliate publisher quality. 'Planters' drive high volumes of new customer acquisition, while 'Harvesters' bleed margin by taking credit for returning customers via coupon codes.")
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
