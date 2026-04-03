@@ -612,17 +612,17 @@ try:
         
         col_exec1, col_exec2 = st.columns(2)
         with col_exec1:
-            st.markdown("### 🔥 Top 5 Scale Products")
+            st.markdown(f"### 🔥 Top {top_n} Scale Products")
             st.markdown("Highest sales velocity items carrying the revenue load over this period.")
-            top_5 = all_inv.sort_values(by='Units_Sold', ascending=False).head(5)
-            for idx, row in top_5.iterrows():
+            top_items = all_inv.sort_values(by='Units_Sold', ascending=False).head(top_n)
+            for idx, row in top_items.iterrows():
                 st.success(f"**{row['Display_Name']}**\n\nSold: {int(row['Units_Sold'])} units | Remaining: {int(row['Stock_On_Hand'])}")
                 
         with col_exec2:
-            st.markdown("### 🧊 Bottom 5 Dead Stock")
+            st.markdown(f"### 🧊 Bottom {top_n} Dead Stock")
             st.markdown("Items with massive warehouse inventory but absolutely zero sales velocity.")
-            bottom_5 = all_inv[all_inv['Units_Sold'] == 0].sort_values(by='Stock_On_Hand', ascending=False).head(5)
-            for idx, row in bottom_5.iterrows():
+            bottom_items = all_inv[all_inv['Units_Sold'] == 0].sort_values(by='Stock_On_Hand', ascending=False).head(top_n)
+            for idx, row in bottom_items.iterrows():
                 st.error(f"**{row['Display_Name']}**\n\nSold: 0 units | Stagnant Stock: {int(row['Stock_On_Hand'])}")
 
 except Exception as e:
