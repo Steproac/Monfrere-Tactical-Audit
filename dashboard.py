@@ -592,5 +592,38 @@ try:
         else:
             st.info("No data available for this selection.")
 
+        # --- Section: Executive Summary (Side by Side) ---
+        st.divider()
+        st.header("Executive Merchandising Summary")
+        
+        if 'Title' in inventory_df.columns:
+            inv_clean_full = inventory_df[['SKU', 'Title', 'Available (not editable)']].copy()
+            inv_clean_full.rename(columns={'Available (not editable)': 'Stock_On_Hand', 'Title': 'Inv_Title'}, inplace=True)
+        else:
+            inv_clean_full = inventory_df[['SKU', 'Available (not editable)']].copy()
+            inv_clean_full['Inv_Title'] = inv_clean_full['SKU']
+            inv_clean_full.rename(columns={'Available (not editable)': 'Stock_On_Hand'}, inplace=True)
+            
+        inv_clean_full['Stock_On_Hand'] = pd.to_numeric(inv_clean_full['Stock_On_Hand'], errors='coerce').fillna(0)
+        
+        all_inv = pd.merge(inv_clean_full, velocity_agg, left_on='SKU', right_on='Lineitem sku', how='left')
+        all_inv['Units_Sold'] = all_inv['Units_Sold'].fillna(0)
+        all_inv['Display_Name'] = np.where(all_inv['Product_Name'].isna(), all_inv['Inv_Title'], all_inv['Product_Name'])
+        
+        col_exec1, col_exec2 = st.columns(2)
+        with col_exec1:
+            st.markdown("### 🔥 Top 5 Scale Products")
+            st.markdown("Highest sales velocity items carrying the revenue load over this period.")
+            top_5 = all_inv.sort_values(by='Units_Sold', ascending=False).head(5)
+            for idx, row in top_5.iterrows():
+                st.success(f"**{row['Display_Name']}**\n\nSold: {int(row['Units_Sold'])} units | Remaining: {int(row['Stock_On_Hand'])}")
+                
+        with col_exec2:
+            st.markdown("### 🧊 Bottom 5 Dead Stock")
+            st.markdown("Items with massive warehouse inventory but absolutely zero sales velocity.")
+            bottom_5 = all_inv[all_inv['Units_Sold'] == 0].sort_values(by='Stock_On_Hand', ascending=False).head(5)
+            for idx, row in bottom_5.iterrows():
+                st.error(f"**{row['Display_Name']}**\n\nSold: 0 units | Stagnant Stock: {int(row['Stock_On_Hand'])}")
+
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
