@@ -331,7 +331,7 @@ try:
             fig_fab_rev.update_traces(texttemplate='$%{text:,.0f}', textposition='outside')
             fig_fab_rev = style_plotly_fig(fig_fab_rev)
             st.plotly_chart(fig_fab_rev, use_container_width=True)
-            st.caption("🎯 **Insight:** Identifies the fabric pillars driving the most gross revenue, highlighting where customer demand is aggregating.")
+            st.info("🎯 **Strategic Insight:** This chart identifies the absolute fabric pillars driving the most gross revenue. It highlights where your customer base's demand is aggregating naturally. \\n\\n**Actionable Takeaway:** Use this to inform your upfront seasonal fabric buys. Double down on marketing budgets for these top-performing materials and consider expanding their colorways, as they represent proven product-market fit.")
             
         with colM2:
             # Conversion Rate Bubble / Bar
@@ -343,7 +343,7 @@ try:
             fig_fab_cr.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
             fig_fab_cr = style_plotly_fig(fig_fab_cr)
             st.plotly_chart(fig_fab_cr, use_container_width=True)
-            st.caption("⚖️ **Insight:** Highlights friction in the funnel. Fabrics with high views but low conversion rates signify pricing resistance, sizing issues, or visual asset friction.")
+            st.info("⚖️ **Strategic Insight:** Highlighting friction in the merchandising funnel. Fabrics with high page views but an abysmal conversion rate signify extreme friction. \\n\\n**Actionable Takeaway:** A high-view/low-conversion product means the marketing hooked them, but the product page failed. You need to immediately review these specific products for pricing resistance, poor visual photography layout, or broken sizing mechanics.")
             
         # Sales Velocity by Body & Fabric Layout (Matrix)
         st.markdown("#### Item Revenue Matrix: Body vs Fabric")
@@ -368,7 +368,7 @@ try:
             fig_matrix = style_plotly_fig(fig_matrix)
             fig_matrix.update_layout(height=600)
             st.plotly_chart(fig_matrix, use_container_width=True)
-            st.caption("🧩 **Insight:** A granular matrix isolating performance by body silhouette overlaid with fabric. Extremely useful for identifying micro-trends (e.g., specific fits working only in specific washes).")
+            st.info("🧩 **Strategic Insight:** A highly granular cross-sectional matrix isolating performance by body silhouette overlaid with the fabric type. \\n\\n**Actionable Takeaway:** This is extremely useful for identifying micro-trends. For example, if 'Slim' works well in 'Denim' but completely fails in 'Trouser' fabrics, you should cease attempting to force poor silhouettes into incompatible fabrics, thereby streamlining your SKU counts.")
     else:
         st.warning("Google Analytics Ecom Dataset not found or filters yielded no valid merchandising data.")
 
@@ -391,7 +391,7 @@ try:
             )
             fig_time = style_plotly_fig(fig_time)
             st.plotly_chart(fig_time, use_container_width=True)
-            st.caption("📈 **Insight:** Tracks whether brand growth is sustained by healthy new customer acquisition or artificially inflated by returning customers.")
+            st.info("📈 **Strategic Insight:** This tracks the absolute core health of the brand: is your growth being sustained by acquiring net-new blood, or are you artificially inflating numbers by milking the same returning customers? \\n\\n**Actionable Takeaway:** If New Customer ratios drastically drop while ad spend rises, your Top of Funnel (meta prospecting) is failing. You must rotate fresh creative immediately to break out of audience fatigue.")
 
     with col_chart2:
         discount_split = shopify_filtered.groupby('Used_Discount')['Total'].sum().reset_index()
@@ -403,7 +403,7 @@ try:
             )
             fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#E0E6ED"))
             st.plotly_chart(fig_pie, use_container_width=True)
-            st.caption("📉 **Insight:** Analyzes brand equity and margin decay by visualizing how much revenue depends on discount codes vs. full-price conversions.")
+            st.info("📉 **Strategic Insight:** Analyzes severe brand equity and margin decay by visualizing how heavily your revenue stream relies on discount code arbitrage versus full-price, organic conversions. \\n\\n**Actionable Takeaway:** A soaring discount utilization rate indicates that customers have been trained to wait for sales. Focus on reducing site-wide promotions and rely more on targeted VIP loyalty rewards to protect your margin baseline.")
 
     valid_order_names = shopify_filtered['Name'].tolist()
     filtered_lines = order_lines_df[order_lines_df['Name'].isin(valid_order_names) & ~order_lines_df['Lineitem name'].str.contains('Protection', case=False, na=False)]
@@ -420,7 +420,7 @@ try:
             fig_prod = style_plotly_fig(fig_prod)
             fig_prod.update_layout(margin=dict(l=250))
             st.plotly_chart(fig_prod, use_container_width=True)
-            st.caption("⭐ **Insight:** The exact Shopify SKUs acting as your 'Hero' products, driving the bulk of top-line revenue.")
+            st.info("⭐ **Strategic Insight:** These are the exact Shopify SKUs acting as the 'Hero' products for your brand, mathematically driving the absolute bulk of your top-line revenue. \\n\\n**Actionable Takeaway:** Ensure these specific SKUs never go out of stock under any circumstances. These should also be the primary focus products for your top-of-funnel Meta Acquisition campaigns.")
 
 
     # -----------------------------------------------
@@ -452,7 +452,7 @@ try:
             fig_waste.update_layout(height=max(400, len(top_wasted) * 25))
             fig_waste = style_plotly_fig(fig_waste)
             st.plotly_chart(fig_waste, use_container_width=True)
-            st.caption("⚠️ **Insight:** Identifies 'Kill Switch' Meta Ads. These creatives have spent aggressively without generating a single purchase, representing pure wasted spend.")
+            st.info("⚠️ **Strategic Insight:** Identifies the ultimate 'Kill Switch' Meta Ads. These specific creative units have spent aggressively without generating a single purchase, representing pure, unadulterated wasted spend. \\n\\n**Actionable Takeaway:** Log into Meta Business Manager immediately and pause all specific ads listed above. Redirect these funds directly into the high-ROAS 'Scale' creatives to instantly boost blended profitability without increasing the overall daily budget.")
         else:
             st.info("No ads meet the statistical failure threshold based on current filters.")
 
@@ -472,7 +472,7 @@ try:
             )
             fig_aff = style_plotly_fig(fig_aff)
             st.plotly_chart(fig_aff, use_container_width=True)
-            st.caption("🔄 **Insight:** Evaluates affiliate publisher quality. 'Planters' drive high volumes of new customer acquisition, while 'Harvesters' bleed margin by taking credit for returning customers via coupon codes.")
+            st.info("🔄 **Strategic Insight:** Evaluates true affiliate publisher incrementality. 'Planters' are high-value partners driving genuine new customer acquisition via organic content. 'Harvesters' are predatory voucher sites bleeding your margin by injecting coupon codes at checkout for returning customers. \\n\\n**Actionable Takeaway:** Restructure your AWIN commission tiers. Slash payouts for Harvesters to 1%, and reinvest those pools into Planters to incentivize higher-quality traffic.")
 
     # -----------------------------------------------
     # 5. INVENTORY INTELLIGENCE & VELOCITY
@@ -559,7 +559,7 @@ try:
             )
             fig_size = style_plotly_fig(fig_size)
             st.plotly_chart(fig_size, use_container_width=True)
-            st.caption("📏 **Insight:** Immediately highlights sizing mismatch. Heavy red bars indicate dead stock mapping to sizes, while green bars indicate depleted high-demand sizes.")
+            st.info("📏 **Strategic Insight:** Immediately highlights the mathematical sizing mismatch for this specific product. Heavy red bars indicate 'Dead Stock' sitting in the warehouse, while green bars indicate completely depleted high-demand sizes. \\n\\n**Actionable Takeaway:** Update the technical size grading in your next manufacturing purchase order. Stop ordering generic linear size runs and instead index your buys specifically against these authentic historical demand ratios.")
         else:
             st.info("No data available for this selection.")
 
@@ -593,7 +593,7 @@ try:
             fig_inv = style_plotly_fig(fig_inv)
             fig_inv.update_xaxes(title_text="", tickangle=45)
             st.plotly_chart(fig_inv, use_container_width=True)
-            st.caption("📦 **Insight:** Compares how many units you recently burned vs. how many remain. Identifies top-selling items that need aggressive re-orders before momentum halts.")
+            st.info("📦 **Strategic Insight:** Compares the sheer volume of units recently burned versus how many actively remain available. This instantly identifies top-selling momentum items that face a catastrophic stockout threat. \\n\\n**Actionable Takeaway:** Use this visual to justify immediate emergency air-freight reorders for products running below 21 days of cover. Do not allow your top momentum drivers to hit zero.")
 
         # --- Section: Executive Summary (Side by Side) ---
         st.divider()
