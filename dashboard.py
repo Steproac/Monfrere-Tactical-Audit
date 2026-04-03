@@ -484,12 +484,36 @@ try:
         timeframe_days = (end_date - start_date).days
         if timeframe_days < 1: timeframe_days = 1 # Prevent Div/0
         
+        st.markdown(f"**Time Period Evaluated:** {start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')} ({timeframe_days} Days)")
+        
+        top_n = st.slider("Select Top N Movers", min_value=5, max_value=50, value=15, step=5)
+        
+        # --- Parser for Size & Base Product ---
+        def parse_size(name):
+            val = str(name).strip()
+            if ' / ' in val:
+                return val.split(' / ')[-1].strip()
+            return 'Unknown'
+            
+        def parse_base(name):
+            val = str(name).strip()
+            if ' - ' in val:
+                return val.split(' - ')[0].strip()
+            if ' / ' in val:
+                return val.split(' / ')[0].strip()
+            return val
+            
         valid_orders_in_date = shopify_filtered['Name'].tolist()
-        ol_filtered = order_lines_df[order_lines_df['Name'].isin(valid_orders_in_date)]
+        ol_filtered = order_lines_df[order_lines_df['Name'].isin(valid_orders_in_date)].copy()
+        
+        ol_filtered['Size'] = ol_filtered['Lineitem name'].apply(parse_size)
+        ol_filtered['Base_Product'] = ol_filtered['Lineitem name'].apply(parse_base)
         
         velocity_agg = ol_filtered.groupby('Lineitem sku').agg(
             Units_Sold=('Lineitem quantity', 'sum'),
-            Product_Name=('Lineitem name', 'first')
+            Product_Name=('Lineitem name', 'first'),
+            Base_Product=('Base_Product', 'first'),
+            Size=('Size', 'first')
         ).reset_index()
         
         velocity_agg['Daily_Velocity'] = velocity_agg['Units_Sold'] / timeframe_days
@@ -511,7 +535,7 @@ try:
         col_inv1, col_inv2 = st.columns([1, 1])
         with col_inv1:
             st.markdown("#### High-Velocity Stockout Risks")
-            critical_inv = merged_inv[merged_inv['Days_of_Cover'] <= 21].sort_values('Days_of_Cover', ascending=True).head(15)
+            critical_inv = merged_inv[merged_inv['Days_of_Cover'] <= 21].sort_values('Days_of_Cover', ascending=True).head(top_n)
             if not critical_inv.empty:
                 display_df = critical_inv[['Product_Name', 'Units_Sold', 'Stock_On_Hand', 'Days_of_Cover']].copy()
                 display_df['Days_of_Cover'] = display_df['Days_of_Cover'].round(0).astype(int)
@@ -521,8 +545,8 @@ try:
                 st.success("No high-velocity products are currently facing imminent stockouts (<21 Days of Cover).")
                 
         with col_inv2:
-            st.markdown("#### Top 15 Movers: Volume vs. Remaining Stock")
-            top_movers = merged_inv.sort_values('Units_Sold', ascending=False).head(15).copy()
+            st.markdown(f"#### Top {top_n} Movers: Volume vs. Remaining Stock")
+            top_movers = merged_inv.sort_values('Units_Sold', ascending=False).head(top_n).copy()
             plot_df = pd.melt(top_movers, id_vars=['Product_Name'], value_vars=['Units_Sold', 'Stock_On_Hand'], var_name='Metric', value_name='Amount')
             plot_df['Metric'] = plot_df['Metric'].replace({'Units_Sold': 'Sold in Period', 'Stock_On_Hand': 'Stock Remaining'})
             
@@ -534,6 +558,39 @@ try:
             fig_inv.update_xaxes(title_text="", tickangle=45)
             st.plotly_chart(fig_inv, use_container_width=True)
             st.caption("📦 **Insight:** Compares how many units you recently burned vs. how many remain. Identifies top-selling items that need aggressive re-orders before momentum halts.")
+
+        # --- Section: Size Sell-Through Analysis ---
+        st.divider()
+        st.markdown("### Granular Sizing Sell-Through Analysis")
+        st.markdown("Select a specific clothing line to evaluate which sizes are moving vs. which sizes are dead stock.")
+        
+        unique_bases = sorted(merged_inv['Base_Product'].unique().tolist())
+        default_index = 0
+        for i, b in enumerate(unique_bases):
+            if "Trooper Army" in b:
+                default_index = i
+                break
+                
+        selected_base = st.selectbox("Select Clothing Line", options=unique_bases, index=default_index)
+        
+        size_df = merged_inv[merged_inv['Base_Product'] == selected_base].copy()
+        if not size_df.empty:
+            size_df['Size_Sort'] = size_df['Size'].apply(lambda x: int(x) if str(x).isdigit() else 999)
+            size_df = size_df.sort_values('Size_Sort')
+            
+            plot_size = pd.melt(size_df, id_vars=['Size'], value_vars=['Units_Sold', 'Stock_On_Hand'], var_name='Metric', value_name='Amount')
+            plot_size['Metric'] = plot_size['Metric'].replace({'Units_Sold': 'Units Sold', 'Stock_On_Hand': 'Unsold Inventory'})
+            
+            fig_size = px.bar(
+                plot_size, x='Size', y='Amount', color='Metric', barmode='group',
+                color_discrete_map={'Units Sold': '#00C853', 'Unsold Inventory': '#FF4B4B'},
+                title=f"Sizing Distribution: {selected_base}"
+            )
+            fig_size = style_plotly_fig(fig_size)
+            st.plotly_chart(fig_size, use_container_width=True)
+            st.caption("📏 **Insight:** Immediately highlights sizing mismatch. Heavy red bars indicate dead stock mapping to sizes, while green bars indicate depleted high-demand sizes.")
+        else:
+            st.info("No data available for this selection.")
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
