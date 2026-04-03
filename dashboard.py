@@ -188,6 +188,14 @@ def load_ga_merch_data():
         
     return df
 
+@st.cache_data
+def load_inventory_data():
+    file_path = "Shopify_inventory_export_1.csv"
+    if os.path.exists(file_path):
+        inv_df = pd.read_csv(file_path, low_memory=False)
+        return inv_df
+    return pd.DataFrame()
+
 # Helper formatting
 def style_plotly_fig(fig):
     fig.update_layout(
@@ -208,6 +216,7 @@ try:
     awin_raw_df = load_awin_raw_data()
     abandoned_df = load_abandoned_checkouts()
     ga_merch_df = load_ga_merch_data()
+    inventory_df = load_inventory_data()
     
     if shopify_raw_df.empty or meta_raw_df.empty:
         st.error("Could not load Core data files (Shopify or Meta v2). Please check file paths.")
@@ -464,6 +473,67 @@ try:
             fig_aff = style_plotly_fig(fig_aff)
             st.plotly_chart(fig_aff, use_container_width=True)
             st.caption("🔄 **Insight:** Evaluates affiliate publisher quality. 'Planters' drive high volumes of new customer acquisition, while 'Harvesters' bleed margin by taking credit for returning customers via coupon codes.")
+
+    # -----------------------------------------------
+    # 5. INVENTORY INTELLIGENCE & VELOCITY
+    # -----------------------------------------------
+    if not inventory_df.empty and not order_lines_df.empty:
+        st.divider()
+        st.header("5. Inventory Intelligence (Sales Velocity & Cover)")
+        
+        timeframe_days = (end_date - start_date).days
+        if timeframe_days < 1: timeframe_days = 1 # Prevent Div/0
+        
+        valid_orders_in_date = shopify_filtered['Name'].tolist()
+        ol_filtered = order_lines_df[order_lines_df['Name'].isin(valid_orders_in_date)]
+        
+        velocity_agg = ol_filtered.groupby('Lineitem sku').agg(
+            Units_Sold=('Lineitem quantity', 'sum'),
+            Product_Name=('Lineitem name', 'first')
+        ).reset_index()
+        
+        velocity_agg['Daily_Velocity'] = velocity_agg['Units_Sold'] / timeframe_days
+        
+        inv_clean = inventory_df[['SKU', 'Available (not editable)']].copy()
+        inv_clean.rename(columns={'Available (not editable)': 'Stock_On_Hand'}, inplace=True)
+        inv_clean['Stock_On_Hand'] = pd.to_numeric(inv_clean['Stock_On_Hand'], errors='coerce').fillna(0)
+        
+        merged_inv = pd.merge(velocity_agg, inv_clean, left_on='Lineitem sku', right_on='SKU', how='inner')
+        merged_inv = merged_inv[merged_inv['Units_Sold'] > 0]
+        
+        merged_inv['Days_of_Cover'] = np.where(
+            merged_inv['Daily_Velocity'] > 0, 
+            merged_inv['Stock_On_Hand'] / merged_inv['Daily_Velocity'], 
+            9999
+        )
+        merged_inv['Risk_Level'] = np.where(merged_inv['Days_of_Cover'] <= 21, 'Critical Restock (<21 Days)', 'Healthy Stock')
+        
+        col_inv1, col_inv2 = st.columns([1, 1])
+        with col_inv1:
+            st.markdown("#### High-Velocity Stockout Risks")
+            critical_inv = merged_inv[merged_inv['Days_of_Cover'] <= 21].sort_values('Days_of_Cover', ascending=True).head(15)
+            if not critical_inv.empty:
+                display_df = critical_inv[['Product_Name', 'Units_Sold', 'Stock_On_Hand', 'Days_of_Cover']].copy()
+                display_df['Days_of_Cover'] = display_df['Days_of_Cover'].round(0).astype(int)
+                display_df.rename(columns={'Product_Name': 'SKU Name', 'Units_Sold': 'Sold in Period', 'Stock_On_Hand': 'Current Stock', 'Days_of_Cover': 'Days Left'}, inplace=True)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+            else:
+                st.success("No high-velocity products are currently facing imminent stockouts (<21 Days of Cover).")
+                
+        with col_inv2:
+            st.markdown("#### Top 15 Movers: Volume vs. Remaining Stock")
+            top_movers = merged_inv.sort_values('Units_Sold', ascending=False).head(15).copy()
+            plot_df = pd.melt(top_movers, id_vars=['Product_Name'], value_vars=['Units_Sold', 'Stock_On_Hand'], var_name='Metric', value_name='Amount')
+            plot_df['Metric'] = plot_df['Metric'].replace({'Units_Sold': 'Sold in Period', 'Stock_On_Hand': 'Stock Remaining'})
+            
+            fig_inv = px.bar(
+                plot_df, x='Product_Name', y='Amount', color='Metric', barmode='group',
+                color_discrete_map={'Sold in Period': '#FFB74D', 'Stock Remaining': '#4F8BF9'}
+            )
+            fig_inv = style_plotly_fig(fig_inv)
+            fig_inv.update_xaxes(title_text="", tickangle=45)
+            st.plotly_chart(fig_inv, use_container_width=True)
+            st.caption("📦 **Insight:** Compares how many units you recently burned vs. how many remain. Identifies top-selling items that need aggressive re-orders before momentum halts.")
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
