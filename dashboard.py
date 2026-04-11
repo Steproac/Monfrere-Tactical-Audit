@@ -189,6 +189,37 @@ def load_ga_merch_data():
     return df
 
 @st.cache_data
+def load_sankey_data():
+    dfs_behavior = []
+    behavior_files = ["Shopify 2024 - Customer behavior.csv", "Shopify 2025 YTD - Customer behavior.csv"]
+    for f in behavior_files:
+        if os.path.exists(f):
+            dfs_behavior.append(pd.read_csv(f))
+    
+    if dfs_behavior:
+        beh_df = pd.concat(dfs_behavior, ignore_index=True)
+        beh_df['date'] = pd.to_datetime(beh_df['Week'], errors='coerce', utc=True)
+    else:
+        beh_df = pd.DataFrame()
+
+    dfs_visitors = []
+    visitor_files = ["Shopify 2024 - Visitors Over Time.csv", "Shopify 2025 YTD - Visitors Over Time.csv"]
+    for f in visitor_files:
+        if os.path.exists(f):
+            df = pd.read_csv(f)
+            if 'Month' in df.columns:
+                df.rename(columns={'Month': 'Week'}, inplace=True)
+            dfs_visitors.append(df)
+            
+    if dfs_visitors:
+        vis_df = pd.concat(dfs_visitors, ignore_index=True)
+        vis_df['date'] = pd.to_datetime(vis_df['Week'], errors='coerce', utc=True)
+    else:
+        vis_df = pd.DataFrame()
+
+    return beh_df, vis_df
+
+@st.cache_data
 def load_inventory_data():
     file_path = "Shopify_inventory_export_1.csv"
     if os.path.exists(file_path):
@@ -217,6 +248,7 @@ try:
     abandoned_df = load_abandoned_checkouts()
     ga_merch_df = load_ga_merch_data()
     inventory_df = load_inventory_data()
+    sankey_beh_df, sankey_vis_df = load_sankey_data()
     
     if shopify_raw_df.empty or meta_raw_df.empty:
         st.error("Could not load Core data files (Shopify or Meta v2). Please check file paths.")
@@ -253,6 +285,9 @@ try:
     meta_filtered = meta_raw_df[(meta_raw_df['date'].dt.date >= start_date) & (meta_raw_df['date'].dt.date <= end_date)]
     awin_filtered = awin_raw_df[(awin_raw_df['date'].dt.date >= start_date) & (awin_raw_df['date'].dt.date <= end_date)] if not awin_raw_df.empty else pd.DataFrame()
     ga_filtered = ga_merch_df[(ga_merch_df['date'].dt.date >= start_date) & (ga_merch_df['date'].dt.date <= end_date)] if not ga_merch_df.empty else pd.DataFrame()
+
+    sankey_beh_filtered = sankey_beh_df[(sankey_beh_df['date'].dt.date >= start_date) & (sankey_beh_df['date'].dt.date <= end_date)] if not sankey_beh_df.empty else pd.DataFrame()
+    sankey_vis_filtered = sankey_vis_df[(sankey_vis_df['date'].dt.date >= start_date) & (sankey_vis_df['date'].dt.date <= end_date)] if not sankey_vis_df.empty else pd.DataFrame()
 
     st.sidebar.divider()
     
@@ -371,6 +406,67 @@ try:
             st.info("🧩 **Strategic Insight:** A highly granular cross-sectional matrix isolating performance by body silhouette overlaid with the fabric type. \\n\\n**Actionable Takeaway:** This is extremely useful for identifying micro-trends. For example, if 'Slim' works well in 'Denim' but completely fails in 'Trouser' fabrics, you should cease attempting to force poor silhouettes into incompatible fabrics, thereby streamlining your SKU counts.")
     else:
         st.warning("Google Analytics Ecom Dataset not found or filters yielded no valid merchandising data.")
+
+    # --- Customer Journey Sankey Plot ---
+    if not sankey_beh_filtered.empty and not sankey_vis_filtered.empty:
+        st.markdown("### Customer Journey Drop-Off (Sankey Funnel)")
+        
+        total_sessions = sankey_vis_filtered['Sessions'].sum()
+        cart_adds = sankey_beh_filtered['Sessions with cart additions'].sum()
+        checkouts = sankey_beh_filtered['Sessions that reached checkout'].sum()
+        purchases = sankey_beh_filtered['Sessions that completed checkout'].sum()
+        
+        # Calculate drop-offs
+        drop_browse = max(0, total_sessions - cart_adds)
+        drop_cart = max(0, cart_adds - checkouts)
+        drop_checkout = max(0, checkouts - purchases)
+        
+        labels = [
+            f"Total Sessions<br>({total_sessions:,.0f})", 
+            f"Added to Cart<br>({cart_adds:,.0f})", 
+            f"Reached Checkout<br>({checkouts:,.0f})", 
+            f"Purchased<br>({purchases:,.0f})",
+            f"Dropped (Browse Only)<br>({drop_browse:,.0f})", 
+            f"Dropped (Abandoned Cart)<br>({drop_cart:,.0f})", 
+            f"Dropped (Abandoned Checkout)<br>({drop_checkout:,.0f})"
+        ]
+        
+        colors = ["#4F8BF9", "#FFB74D", "#00C853", "#8A2BE2", "#FF4B4B", "#FF4B4B", "#FF4B4B"]
+        
+        source = [0, 0, 1, 1, 2, 2]
+        target = [1, 4, 2, 5, 3, 6]
+        value = [cart_adds, drop_browse, checkouts, drop_cart, purchases, drop_checkout]
+        
+        node_x = [0.001, 0.35, 0.70, 0.999, 0.35, 0.70, 0.999]
+        node_y = [0.001, 0.001, 0.001, 0.001, 0.999, 0.999, 0.999]
+        
+        fig_sankey = go.Figure(data=[go.Sankey(
+            arrangement = "snap",
+            node = dict(
+                pad = 30,
+                thickness = 20,
+                line = dict(color = "black", width = 0.5),
+                label = labels,
+                color = colors,
+                x = node_x,
+                y = node_y
+            ),
+            link = dict(
+                source = source,
+                target = target,
+                value = value,
+                color = "rgba(255, 255, 255, 0.15)"
+            )
+        )])
+        fig_sankey.update_layout(
+            title_text="E-Commerce Traffic Funnel",
+            font_size=12,
+            height=500,
+            margin=dict(l=20, r=20, t=60, b=20)
+        )
+        fig_sankey = style_plotly_fig(fig_sankey)
+        st.plotly_chart(fig_sankey, use_container_width=True)
+        st.info("🔄 **Strategic Insight:** A macroscopic view of where your paid and organic traffic leaks before converting. \\n\\n**Actionable Takeaway:** If the drop between 'Added to Cart' and 'Reached Checkout' is massive, your cart drawer UX is broken or hit with unexpected shipping costs. If 'Reached Checkout' to 'Purchased' is bleeding, investigate payment gateways or cart abandonment email sequences.")
 
 
     # -----------------------------------------------
@@ -515,6 +611,18 @@ try:
         ).reset_index()
         
         velocity_agg['Daily_Velocity'] = velocity_agg['Units_Sold'] / timeframe_days
+        velocity_agg['Hours_Per_Sale'] = np.where(velocity_agg['Daily_Velocity'] > 0, 24 / velocity_agg['Daily_Velocity'], 9999)
+        velocity_agg['Days_Per_Sale'] = np.where(velocity_agg['Daily_Velocity'] > 0, 1 / velocity_agg['Daily_Velocity'], 9999)
+        
+        def format_pace(row):
+            if row['Hours_Per_Sale'] == 9999:
+                return "No recent sales"
+            elif row['Hours_Per_Sale'] < 24:
+                return f"1 unit every {row['Hours_Per_Sale']:.1f} hours"
+            else:
+                return f"1 unit every {row['Days_Per_Sale']:.1f} days"
+                
+        velocity_agg['Pace_String'] = velocity_agg.apply(format_pace, axis=1)
         
         inv_clean = inventory_df[['SKU', 'Available (not editable)']].copy()
         inv_clean.rename(columns={'Available (not editable)': 'Stock_On_Hand'}, inplace=True)
@@ -549,6 +657,24 @@ try:
             size_df['Size_Sort'] = size_df['Size'].apply(lambda x: int(x) if str(x).isdigit() else 999)
             size_df = size_df.sort_values('Size_Sort')
             
+            total_base_sales = size_df['Units_Sold'].sum()
+            total_base_velocity = size_df['Daily_Velocity'].sum()
+            
+            if total_base_velocity > 0:
+                pacing = 1 / total_base_velocity
+                if pacing < 1:
+                    pacing_str = f"1 unit every {pacing * 24:.1f} hours"
+                else:
+                    pacing_str = f"1 unit every {pacing:.1f} days"
+            else:
+                pacing_str = "No recent sales"
+            
+            scol1, scol2, scol3 = st.columns(3)
+            scol1.metric("Total Line Volume (Units)", f"{total_base_sales:,.0f}")
+            scol2.metric("Total Line Velocity (Sales per day)", f"{total_base_velocity:,.2f}")
+            scol3.metric("Overall Line Pacing", pacing_str)
+            st.write("")
+            
             plot_size = pd.melt(size_df, id_vars=['Size'], value_vars=['Units_Sold', 'Stock_On_Hand'], var_name='Metric', value_name='Amount')
             plot_size['Metric'] = plot_size['Metric'].replace({'Units_Sold': 'Units Sold', 'Stock_On_Hand': 'Unsold Inventory'})
             
@@ -566,6 +692,38 @@ try:
         # --- Section 5b: Velocity Cover ---
         st.divider()
         st.markdown("### Inventory Intelligence (Sales Velocity & Cover)")
+        
+        col_macro1, col_macro2 = st.columns([1, 1])
+        with col_macro1:
+            st.markdown("#### Pacing Quadrant (Speed vs Volume)")
+            fig_scatter = px.scatter(
+                merged_inv, x='Units_Sold', y='Days_Per_Sale', 
+                hover_name='Product_Name', size='Units_Sold', color='Days_Per_Sale',
+                color_continuous_scale="RdYlGn_r", range_color=[0, 30], size_max=45,
+                labels={'Units_Sold': 'Total Volume Sold', 'Days_Per_Sale': 'Days to Sell 1 Unit'}
+            )
+            fig_scatter = style_plotly_fig(fig_scatter)
+            # Hardcap the Y axis at 60 max days (reversed so 0 is at top) so outliers don't smash the graph.
+            fig_scatter.update_yaxes(range=[60, -2])
+            st.plotly_chart(fig_scatter, use_container_width=True)
+            st.info("🎯 **Strategic Insight:** Products in the top right are your absolute superstars (high volume + blazing fast turnaround). Products on the left are slow movers.")
+
+        with col_macro2:
+            st.markdown("#### Turnaround Speedometer Rank")
+            fastest_movers = merged_inv.sort_values('Days_Per_Sale', ascending=True).head(10).copy()
+            fig_speed = px.bar(
+                fastest_movers.sort_values('Days_Per_Sale', ascending=False), 
+                x='Days_Per_Sale', y='Product_Name', orientation='h',
+                title='Fastest Products to Sell 1 Unit (Days)',
+                color_discrete_sequence=['#FFB74D'], text='Days_Per_Sale'
+            )
+            fig_speed.update_traces(texttemplate='%{text:.1f}d', textposition='outside')
+            fig_speed = style_plotly_fig(fig_speed)
+            st.plotly_chart(fig_speed, use_container_width=True)
+            st.info("⚡ **Strategic Insight:** Ranks products strictly by how wildly fast they move. The lower the days, the faster the velocity.")
+            
+        st.divider()
+        st.markdown("### Granular Execution (Stockout Risks & Volume)")
         top_n = st.slider("Select Top N Movers", min_value=5, max_value=50, value=15, step=5)
         
         col_inv1, col_inv2 = st.columns([1, 1])
@@ -573,9 +731,9 @@ try:
             st.markdown("#### High-Velocity Stockout Risks")
             critical_inv = merged_inv[merged_inv['Days_of_Cover'] <= 21].sort_values('Days_of_Cover', ascending=True).head(top_n)
             if not critical_inv.empty:
-                display_df = critical_inv[['Product_Name', 'Units_Sold', 'Stock_On_Hand', 'Days_of_Cover']].copy()
+                display_df = critical_inv[['Product_Name', 'Units_Sold', 'Pace_String', 'Stock_On_Hand', 'Days_of_Cover']].copy()
                 display_df['Days_of_Cover'] = display_df['Days_of_Cover'].round(0).astype(int)
-                display_df.rename(columns={'Product_Name': 'SKU Name', 'Units_Sold': 'Sold in Period', 'Stock_On_Hand': 'Current Stock', 'Days_of_Cover': 'Days Left'}, inplace=True)
+                display_df.rename(columns={'Product_Name': 'SKU Name', 'Units_Sold': 'Sold in Period', 'Pace_String': 'Pace', 'Stock_On_Hand': 'Current Stock', 'Days_of_Cover': 'Days Left'}, inplace=True)
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
             else:
                 st.success("No high-velocity products are currently facing imminent stockouts (<21 Days of Cover).")
@@ -600,8 +758,27 @@ try:
         st.header("Executive Merchandising Summary")
         
         if 'Title' in inventory_df.columns:
-            inv_clean_full = inventory_df[['SKU', 'Title', 'Available (not editable)']].copy()
-            inv_clean_full.rename(columns={'Available (not editable)': 'Stock_On_Hand', 'Title': 'Inv_Title'}, inplace=True)
+            cols_to_keep = ['SKU', 'Title', 'Available (not editable)']
+            for opt in ['Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value']:
+                if opt in inventory_df.columns:
+                    cols_to_keep.append(opt)
+            
+            inv_clean_full = inventory_df[cols_to_keep].copy()
+            
+            def get_inv_size(row):
+                for i in range(1, 4):
+                    opt_name_col = f'Option{i} Name'
+                    opt_val_col = f'Option{i} Value'
+                    if opt_name_col in row and pd.notna(row[opt_name_col]) and str(row[opt_name_col]).strip().lower() == 'size':
+                        return str(row[opt_val_col]).strip() if pd.notna(row[opt_val_col]) else ""
+                return ""
+                
+            inv_clean_full['Found_Size'] = inv_clean_full.apply(get_inv_size, axis=1)
+            inv_clean_full['Inv_Title'] = inv_clean_full.apply(
+                lambda x: f"{x['Title']} / {x['Found_Size']}" if x['Found_Size'] else x['Title'], axis=1
+            )
+            inv_clean_full.rename(columns={'Available (not editable)': 'Stock_On_Hand'}, inplace=True)
+            inv_clean_full = inv_clean_full[['SKU', 'Inv_Title', 'Stock_On_Hand']]
         else:
             inv_clean_full = inventory_df[['SKU', 'Available (not editable)']].copy()
             inv_clean_full['Inv_Title'] = inv_clean_full['SKU']
@@ -619,7 +796,11 @@ try:
             st.markdown("Highest sales velocity items carrying the revenue load over this period.")
             top_items = all_inv.sort_values(by='Units_Sold', ascending=False).head(top_n)
             for idx, row in top_items.iterrows():
-                st.success(f"**{row['Display_Name']}**\n\nSold: {int(row['Units_Sold'])} units | Remaining: {int(row['Stock_On_Hand'])}")
+                try: 
+                    pace_val = row['Pace_String']
+                except:
+                    pace_val = "Unknown Pace"
+                st.success(f"**{row['Display_Name']}**\n\nSold: {int(row['Units_Sold'])} units | Remaining: {int(row['Stock_On_Hand'])}\n\n**Pace:** {pace_val}")
                 
         with col_exec2:
             st.markdown(f"### 🧊 Bottom {top_n} Dead Stock")
@@ -629,4 +810,6 @@ try:
                 st.error(f"**{row['Display_Name']}**\n\nSold: 0 units | Stagnant Stock: {int(row['Stock_On_Hand'])}")
 
 except Exception as e:
+    import traceback
+    traceback.print_exc()
     st.error(f"Error loading dashboard: {e}")
