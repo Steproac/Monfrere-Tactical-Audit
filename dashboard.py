@@ -38,6 +38,9 @@ st.markdown("""
 
 st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 
+if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
+    st.cache_data.clear()
+
 # --- CACHE DATA LOADERS ---
 @st.cache_data
 def load_shopify_data():
@@ -285,9 +288,6 @@ try:
         st.stop()
         
     # --- SIDEBAR FILTERS ---
-    if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
-        st.cache_data.clear()
-        
     st.sidebar.header("Global Date Filter")
     
     min_date_val = meta_raw_df['date'].min().date()
