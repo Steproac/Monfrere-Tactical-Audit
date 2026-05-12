@@ -49,13 +49,20 @@ def fix_mixed_types(df):
 
 # --- CACHE DATA LOADERS ---
 @st.cache_data
-def load_shopify_data():
-    # Cache Bust 1
-    files = ["Shopify_orders_export_1.csv", "Shopify_orders_export_2.csv"]
+def load_shopify_data_v3():
+    files = [
+        "Shopify_orders_export_1.csv", 
+        "Shopify_orders_export_2.csv",
+        "orders_export_1.csv",
+        "orders_export_2.csv"
+    ]
     dfs = []
+    usecols_shopify = ['Name', 'Email', 'Financial Status', 'Created at', 'Discount Code', 'Total', 'Lineitem quantity', 'Lineitem price', 'Lineitem name', 'Lineitem sku']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, low_memory=False))
+            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
+            actual_cols = [c for c in file_cols if c in usecols_shopify]
+            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
             
     if not dfs:
         return pd.DataFrame(), pd.DataFrame()
@@ -77,7 +84,7 @@ def load_shopify_data():
     paid_orders['Is_New'] = paid_orders['date'] == paid_orders['First Purchase Date']
     paid_orders['Used_Discount'] = paid_orders['Discount Code'].notna() & (paid_orders['Discount Code'] != '')
     
-    return paid_orders, orders_df
+    return fix_mixed_types(paid_orders), fix_mixed_types(orders_df)
 
 @st.cache_data
 def load_abandoned_checkouts():
@@ -254,7 +261,7 @@ def style_plotly_fig(fig):
     return fig
 
 try:
-    shopify_raw_df, order_lines_df = load_shopify_data()
+    shopify_raw_df, order_lines_df = load_shopify_data_v3()
     meta_raw_df = load_meta_data_v3()
     awin_raw_df = load_awin_raw_data()
     abandoned_df = load_abandoned_checkouts()
