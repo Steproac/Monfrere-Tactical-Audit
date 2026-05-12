@@ -51,9 +51,10 @@ def load_shopify_data():
         "orders_export_2.csv"
     ]
     dfs = []
+    usecols_shopify = ['Name', 'Email', 'Financial Status', 'Created at', 'Discount Code', 'Total', 'Lineitem quantity', 'Lineitem price', 'Lineitem name', 'Lineitem sku']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, low_memory=False))
+            dfs.append(pd.read_csv(f, usecols=lambda c: c in usecols_shopify, low_memory=False))
             
     if not dfs:
         return pd.DataFrame(), pd.DataFrame()
@@ -102,9 +103,10 @@ def load_meta_data():
         "META MONFRERE-Ads-Jan-1-2026-May-11-2026.csv"
     ]
     dfs = []
+    usecols_meta = ['Reporting starts', 'Amount spent (USD)', 'Purchases', 'Purchase ROAS (return on ad spend)', 'Ad set name', 'Ad name']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, low_memory=False))
+            dfs.append(pd.read_csv(f, usecols=lambda c: c in usecols_meta, low_memory=False))
             
     if not dfs:
         return pd.DataFrame()
