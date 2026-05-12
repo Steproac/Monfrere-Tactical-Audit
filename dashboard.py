@@ -38,32 +38,15 @@ st.markdown("""
 
 st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 
-if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
-    st.cache_data.clear()
-
-def fix_mixed_types(df):
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            df[col] = df[col].astype(str)
-    return df
-
 # --- CACHE DATA LOADERS ---
 @st.cache_data
-def load_shopify_data_v3():
-    files = [
-        "Shopify_orders_export_1.csv", 
-        "Shopify_orders_export_2.csv",
-        "orders_export_1.csv",
-        "orders_export_2.csv"
-    ]
+def load_shopify_data():
+    # Cache Bust 1
+    files = ["Shopify_orders_export_1.csv", "Shopify_orders_export_2.csv"]
     dfs = []
-    usecols_shopify = ['Name', 'Email', 'Financial Status', 'Created at', 'Discount Code', 'Total', 'Lineitem quantity', 'Lineitem price', 'Lineitem name', 'Lineitem sku']
     for f in files:
         if os.path.exists(f):
-            # Ensure we only request columns that actually exist in the file
-            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
-            actual_cols = [c for c in file_cols if c in usecols_shopify]
-            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
+            dfs.append(pd.read_csv(f, low_memory=False))
             
     if not dfs:
         return pd.DataFrame(), pd.DataFrame()
@@ -85,40 +68,31 @@ def load_shopify_data_v3():
     paid_orders['Is_New'] = paid_orders['date'] == paid_orders['First Purchase Date']
     paid_orders['Used_Discount'] = paid_orders['Discount Code'].notna() & (paid_orders['Discount Code'] != '')
     
-    return fix_mixed_types(paid_orders), fix_mixed_types(orders_df)
+    return paid_orders, orders_df
 
 @st.cache_data
-def load_abandoned_checkouts_v3():
+def load_abandoned_checkouts():
     # Cache Bust 1
-    files = [
-        "Shopify checkouts_export_1 (3).csv",
-        "Shopify_Abandoned checkouts_export_032026.csv"
-    ]
-    for f in files:
-        if os.path.exists(f):
-            df = pd.read_csv(f, low_memory=False)
-            df['Total'] = pd.to_numeric(df.get('Total', 0), errors='coerce').fillna(0)
-            return fix_mixed_types(df)
+    f = "Shopify_Abandoned checkouts_export_032026.csv"
+    if os.path.exists(f):
+        df = pd.read_csv(f, low_memory=False)
+        df['Total'] = pd.to_numeric(df.get('Total', 0), errors='coerce').fillna(0)
+        return df
     return pd.DataFrame()
 
 @st.cache_data
-def load_meta_data_v3():
+def load_meta_data():
     # Cache Bust 1
     files = [
         "Meta_Daily_MONFRERE-Ads-Fe-28-2023-Dec-31-2023 _v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2024-Dec-31-2024_v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2025-Dec-31-2025_v2.csv",
-        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv",
-        "META MONFRERE-Ads-Jan-1-2026-May-11-2026.csv"
+        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv"
     ]
     dfs = []
-    usecols_meta = ['Reporting starts', 'Amount spent (USD)', 'Purchases', 'Purchase ROAS (return on ad spend)', 'Ad set name', 'Ad name']
     for f in files:
         if os.path.exists(f):
-            # Ensure we only request columns that actually exist in the file
-            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
-            actual_cols = [c for c in file_cols if c in usecols_meta]
-            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
+            dfs.append(pd.read_csv(f, low_memory=False))
             
     if not dfs:
         return pd.DataFrame()
@@ -128,34 +102,21 @@ def load_meta_data_v3():
     meta_df['Amount spent (USD)'] = pd.to_numeric(meta_df['Amount spent (USD)'], errors='coerce').fillna(0)
     meta_df['Purchases'] = pd.to_numeric(meta_df['Purchases'], errors='coerce').fillna(0)
     meta_df['Reported ROAS'] = pd.to_numeric(meta_df.get('Purchase ROAS (return on ad spend)', 0), errors='coerce').fillna(0)
-    return fix_mixed_types(meta_df.dropna(subset=['date']))
+    return meta_df.dropna(subset=['date'])
 
 @st.cache_data
-def load_awin_raw_data_v3():
+def load_awin_raw_data():
     # Cache Bust 1
-    files = [
-        "AWIN transactions_103309_2024-01-01_2026-03-06.csv",
-        "AWIN transactions_103309_2026-01-01_2026-05-12.csv"
-    ]
-    dfs = []
-    for f in files:
-        if os.path.exists(f):
-            dfs.append(pd.read_csv(f, low_memory=False))
-            
-    if dfs:
-        awin_df = pd.concat(dfs, ignore_index=True)
-        # Drop duplicate transactions based on ID if present
-        if 'id' in awin_df.columns:
-            awin_df = awin_df.drop_duplicates(subset=['id'])
-            
+    if os.path.exists("AWIN transactions_103309_2024-01-01_2026-03-06.csv"):
+        awin_df = pd.read_csv("AWIN transactions_103309_2024-01-01_2026-03-06.csv", low_memory=False)
         awin_df['date'] = pd.to_datetime(awin_df['date'], errors='coerce', utc=True)
         awin_df['site_name'] = awin_df['site_name'].fillna('Unknown')
         awin_df['is_new'] = awin_df['customer_acquisition'].astype(str).str.lower().str.contains('new').astype(int)
-        return fix_mixed_types(awin_df.dropna(subset=['date']))
+        return awin_df.dropna(subset=['date'])
     return pd.DataFrame()
 
 @st.cache_data
-def load_ga_merch_data_v3():
+def load_ga_merch_data():
     # Cache Bust 1
     ga_file = "GA Ecommerce_purchases_Item_name032026.csv"
     if not os.path.exists(ga_file):
@@ -225,10 +186,10 @@ def load_ga_merch_data_v3():
         # Fallback date if not present
         df['date'] = pd.to_datetime('today', utc=True)
         
-    return fix_mixed_types(df)
+    return df
 
 @st.cache_data
-def load_sankey_data_v3():
+def load_sankey_data():
     dfs_behavior = []
     behavior_files = ["Shopify 2024 - Customer behavior.csv", "Shopify 2025 YTD - Customer behavior.csv"]
     for f in behavior_files:
@@ -242,11 +203,7 @@ def load_sankey_data_v3():
         beh_df = pd.DataFrame()
 
     dfs_visitors = []
-    visitor_files = [
-        "Shopify 2024 - Visitors Over Time.csv", 
-        "Shopify 2025 YTD - Visitors Over Time.csv",
-        "Shopify Visitors over time - 2026-01-01 - 2026-05-11.csv"
-    ]
+    visitor_files = ["Shopify 2024 - Visitors Over Time.csv", "Shopify 2025 YTD - Visitors Over Time.csv"]
     for f in visitor_files:
         if os.path.exists(f):
             df = pd.read_csv(f)
@@ -260,18 +217,14 @@ def load_sankey_data_v3():
     else:
         vis_df = pd.DataFrame()
 
-    return fix_mixed_types(beh_df), fix_mixed_types(vis_df)
+    return beh_df, vis_df
 
 @st.cache_data
-def load_inventory_data_v3():
-    files = [
-        "Shopify inventory_export_1.csv",
-        "Shopify_inventory_export_1.csv"
-    ]
-    for file_path in files:
-        if os.path.exists(file_path):
-            inv_df = pd.read_csv(file_path, low_memory=False)
-            return fix_mixed_types(inv_df)
+def load_inventory_data():
+    file_path = "Shopify_inventory_export_1.csv"
+    if os.path.exists(file_path):
+        inv_df = pd.read_csv(file_path, low_memory=False)
+        return inv_df
     return pd.DataFrame()
 
 # Helper formatting
@@ -289,13 +242,13 @@ def style_plotly_fig(fig):
     return fig
 
 try:
-    shopify_raw_df, order_lines_df = load_shopify_data_v3()
-    meta_raw_df = load_meta_data_v3()
-    awin_raw_df = load_awin_raw_data_v3()
-    abandoned_df = load_abandoned_checkouts_v3()
-    ga_merch_df = load_ga_merch_data_v3()
-    inventory_df = load_inventory_data_v3()
-    sankey_beh_df, sankey_vis_df = load_sankey_data_v3()
+    shopify_raw_df, order_lines_df = load_shopify_data()
+    meta_raw_df = load_meta_data()
+    awin_raw_df = load_awin_raw_data()
+    abandoned_df = load_abandoned_checkouts()
+    ga_merch_df = load_ga_merch_data()
+    inventory_df = load_inventory_data()
+    sankey_beh_df, sankey_vis_df = load_sankey_data()
     
     if shopify_raw_df.empty or meta_raw_df.empty:
         st.error("Could not load Core data files (Shopify or Meta v2). Please check file paths.")
