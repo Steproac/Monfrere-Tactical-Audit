@@ -41,8 +41,12 @@ st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 # --- CACHE DATA LOADERS ---
 @st.cache_data
 def load_shopify_data():
-    # Cache Bust 1
-    files = ["Shopify_orders_export_1.csv", "Shopify_orders_export_2.csv"]
+    files = [
+        "Shopify_orders_export_1.csv", 
+        "Shopify_orders_export_2.csv",
+        "orders_export_1.csv",
+        "orders_export_2.csv"
+    ]
     dfs = []
     for f in files:
         if os.path.exists(f):
@@ -73,11 +77,15 @@ def load_shopify_data():
 @st.cache_data
 def load_abandoned_checkouts():
     # Cache Bust 1
-    f = "Shopify_Abandoned checkouts_export_032026.csv"
-    if os.path.exists(f):
-        df = pd.read_csv(f, low_memory=False)
-        df['Total'] = pd.to_numeric(df.get('Total', 0), errors='coerce').fillna(0)
-        return df
+    files = [
+        "Shopify checkouts_export_1 (3).csv",
+        "Shopify_Abandoned checkouts_export_032026.csv"
+    ]
+    for f in files:
+        if os.path.exists(f):
+            df = pd.read_csv(f, low_memory=False)
+            df['Total'] = pd.to_numeric(df.get('Total', 0), errors='coerce').fillna(0)
+            return df
     return pd.DataFrame()
 
 @st.cache_data
@@ -87,7 +95,8 @@ def load_meta_data():
         "Meta_Daily_MONFRERE-Ads-Fe-28-2023-Dec-31-2023 _v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2024-Dec-31-2024_v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2025-Dec-31-2025_v2.csv",
-        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv"
+        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv",
+        "META MONFRERE-Ads-Jan-1-2026-May-11-2026.csv"
     ]
     dfs = []
     for f in files:
@@ -107,8 +116,21 @@ def load_meta_data():
 @st.cache_data
 def load_awin_raw_data():
     # Cache Bust 1
-    if os.path.exists("AWIN transactions_103309_2024-01-01_2026-03-06.csv"):
-        awin_df = pd.read_csv("AWIN transactions_103309_2024-01-01_2026-03-06.csv", low_memory=False)
+    files = [
+        "AWIN transactions_103309_2024-01-01_2026-03-06.csv",
+        "AWIN transactions_103309_2026-01-01_2026-05-12.csv"
+    ]
+    dfs = []
+    for f in files:
+        if os.path.exists(f):
+            dfs.append(pd.read_csv(f, low_memory=False))
+            
+    if dfs:
+        awin_df = pd.concat(dfs, ignore_index=True)
+        # Drop duplicate transactions based on ID if present
+        if 'id' in awin_df.columns:
+            awin_df = awin_df.drop_duplicates(subset=['id'])
+            
         awin_df['date'] = pd.to_datetime(awin_df['date'], errors='coerce', utc=True)
         awin_df['site_name'] = awin_df['site_name'].fillna('Unknown')
         awin_df['is_new'] = awin_df['customer_acquisition'].astype(str).str.lower().str.contains('new').astype(int)
@@ -203,7 +225,11 @@ def load_sankey_data():
         beh_df = pd.DataFrame()
 
     dfs_visitors = []
-    visitor_files = ["Shopify 2024 - Visitors Over Time.csv", "Shopify 2025 YTD - Visitors Over Time.csv"]
+    visitor_files = [
+        "Shopify 2024 - Visitors Over Time.csv", 
+        "Shopify 2025 YTD - Visitors Over Time.csv",
+        "Shopify Visitors over time - 2026-01-01 - 2026-05-11.csv"
+    ]
     for f in visitor_files:
         if os.path.exists(f):
             df = pd.read_csv(f)
@@ -221,10 +247,14 @@ def load_sankey_data():
 
 @st.cache_data
 def load_inventory_data():
-    file_path = "Shopify_inventory_export_1.csv"
-    if os.path.exists(file_path):
-        inv_df = pd.read_csv(file_path, low_memory=False)
-        return inv_df
+    files = [
+        "Shopify inventory_export_1.csv",
+        "Shopify_inventory_export_1.csv"
+    ]
+    for file_path in files:
+        if os.path.exists(file_path):
+            inv_df = pd.read_csv(file_path, low_memory=False)
+            return inv_df
     return pd.DataFrame()
 
 # Helper formatting
