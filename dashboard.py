@@ -285,6 +285,9 @@ try:
         st.stop()
         
     # --- SIDEBAR FILTERS ---
+    if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
+        st.cache_data.clear()
+        
     st.sidebar.header("Global Date Filter")
     
     min_date_val = meta_raw_df['date'].min().date()
