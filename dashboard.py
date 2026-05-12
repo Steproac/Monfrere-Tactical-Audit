@@ -54,7 +54,10 @@ def load_shopify_data():
     usecols_shopify = ['Name', 'Email', 'Financial Status', 'Created at', 'Discount Code', 'Total', 'Lineitem quantity', 'Lineitem price', 'Lineitem name', 'Lineitem sku']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, usecols=lambda c: c in usecols_shopify, low_memory=False))
+            # Ensure we only request columns that actually exist in the file
+            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
+            actual_cols = [c for c in file_cols if c in usecols_shopify]
+            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
             
     if not dfs:
         return pd.DataFrame(), pd.DataFrame()
@@ -106,7 +109,10 @@ def load_meta_data():
     usecols_meta = ['Reporting starts', 'Amount spent (USD)', 'Purchases', 'Purchase ROAS (return on ad spend)', 'Ad set name', 'Ad name']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, usecols=lambda c: c in usecols_meta, low_memory=False))
+            # Ensure we only request columns that actually exist in the file
+            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
+            actual_cols = [c for c in file_cols if c in usecols_meta]
+            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
             
     if not dfs:
         return pd.DataFrame()
