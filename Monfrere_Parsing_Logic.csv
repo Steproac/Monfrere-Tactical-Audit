@@ -1,0 +1,6 @@
+Attribute Type,Parsing Logic (NLP / Extraction Engine),Target Tags & Keywords
+Fabric,Scans the raw 'Item Name' string and flags exact matches for known core fabric families.,"Butter Suede, Parisian Luxe, Stretch Denim, Indigo, Coated, Velvet, Leather, Stretch"
+Size,"Primary Extraction: Splits the 'Item Name' at the '/' character. Extracts all text following the slash as the size.",Dynamic
+Size Recovery (Dead Stock),"If an item has 0 sales and drops its size string, the script scans Shopify Inventory 'Option1 Name', 'Option2 Name', and 'Option3 Name' for the exact word 'Size' and dynamically appends the matched Value back onto the Title.","Size"
+Body (Silhouette),"If a Fabric is detected, extracts all text positioned BEFORE the fabric name. If no Fabric is found, it defaults to extracting the very first word of the string.",Dynamic
+Color,"If a Fabric is detected, extracts the text positioned AFTER the fabric name. If the text contains dashes ('-'), it strips them to isolate the core color word.",Dynamic

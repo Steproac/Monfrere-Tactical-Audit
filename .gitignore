@@ -7,5 +7,3 @@ env/
 
 # OS generated files
 .DS_Store
-*.csv
-*.zip
