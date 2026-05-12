@@ -41,6 +41,12 @@ st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
     st.cache_data.clear()
 
+def fix_mixed_types(df):
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+    return df
+
 # --- CACHE DATA LOADERS ---
 @st.cache_data
 def load_shopify_data():
@@ -79,7 +85,7 @@ def load_shopify_data():
     paid_orders['Is_New'] = paid_orders['date'] == paid_orders['First Purchase Date']
     paid_orders['Used_Discount'] = paid_orders['Discount Code'].notna() & (paid_orders['Discount Code'] != '')
     
-    return paid_orders, orders_df
+    return fix_mixed_types(paid_orders), fix_mixed_types(orders_df)
 
 @st.cache_data
 def load_abandoned_checkouts():
@@ -92,7 +98,7 @@ def load_abandoned_checkouts():
         if os.path.exists(f):
             df = pd.read_csv(f, low_memory=False)
             df['Total'] = pd.to_numeric(df.get('Total', 0), errors='coerce').fillna(0)
-            return df
+            return fix_mixed_types(df)
     return pd.DataFrame()
 
 @st.cache_data
@@ -122,7 +128,7 @@ def load_meta_data():
     meta_df['Amount spent (USD)'] = pd.to_numeric(meta_df['Amount spent (USD)'], errors='coerce').fillna(0)
     meta_df['Purchases'] = pd.to_numeric(meta_df['Purchases'], errors='coerce').fillna(0)
     meta_df['Reported ROAS'] = pd.to_numeric(meta_df.get('Purchase ROAS (return on ad spend)', 0), errors='coerce').fillna(0)
-    return meta_df.dropna(subset=['date'])
+    return fix_mixed_types(meta_df.dropna(subset=['date']))
 
 @st.cache_data
 def load_awin_raw_data():
@@ -145,7 +151,7 @@ def load_awin_raw_data():
         awin_df['date'] = pd.to_datetime(awin_df['date'], errors='coerce', utc=True)
         awin_df['site_name'] = awin_df['site_name'].fillna('Unknown')
         awin_df['is_new'] = awin_df['customer_acquisition'].astype(str).str.lower().str.contains('new').astype(int)
-        return awin_df.dropna(subset=['date'])
+        return fix_mixed_types(awin_df.dropna(subset=['date']))
     return pd.DataFrame()
 
 @st.cache_data
@@ -219,7 +225,7 @@ def load_ga_merch_data():
         # Fallback date if not present
         df['date'] = pd.to_datetime('today', utc=True)
         
-    return df
+    return fix_mixed_types(df)
 
 @st.cache_data
 def load_sankey_data():
@@ -254,7 +260,7 @@ def load_sankey_data():
     else:
         vis_df = pd.DataFrame()
 
-    return beh_df, vis_df
+    return fix_mixed_types(beh_df), fix_mixed_types(vis_df)
 
 @st.cache_data
 def load_inventory_data():
@@ -265,7 +271,7 @@ def load_inventory_data():
     for file_path in files:
         if os.path.exists(file_path):
             inv_df = pd.read_csv(file_path, low_memory=False)
-            return inv_df
+            return fix_mixed_types(inv_df)
     return pd.DataFrame()
 
 # Helper formatting
