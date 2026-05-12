@@ -43,7 +43,7 @@ if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
 
 # --- CACHE DATA LOADERS ---
 @st.cache_data
-def load_shopify_data():
+def load_shopify_data_v2():
     files = [
         "Shopify_orders_export_1.csv", 
         "Shopify_orders_export_2.csv",
@@ -78,7 +78,7 @@ def load_shopify_data():
     return paid_orders, orders_df
 
 @st.cache_data
-def load_abandoned_checkouts():
+def load_abandoned_checkouts_v2():
     # Cache Bust 1
     files = [
         "Shopify checkouts_export_1 (3).csv",
@@ -92,7 +92,7 @@ def load_abandoned_checkouts():
     return pd.DataFrame()
 
 @st.cache_data
-def load_meta_data():
+def load_meta_data_v2():
     # Cache Bust 1
     files = [
         "Meta_Daily_MONFRERE-Ads-Fe-28-2023-Dec-31-2023 _v2.csv",
@@ -117,7 +117,7 @@ def load_meta_data():
     return meta_df.dropna(subset=['date'])
 
 @st.cache_data
-def load_awin_raw_data():
+def load_awin_raw_data_v2():
     # Cache Bust 1
     files = [
         "AWIN transactions_103309_2024-01-01_2026-03-06.csv",
@@ -141,7 +141,7 @@ def load_awin_raw_data():
     return pd.DataFrame()
 
 @st.cache_data
-def load_ga_merch_data():
+def load_ga_merch_data_v2():
     # Cache Bust 1
     ga_file = "GA Ecommerce_purchases_Item_name032026.csv"
     if not os.path.exists(ga_file):
@@ -214,7 +214,7 @@ def load_ga_merch_data():
     return df
 
 @st.cache_data
-def load_sankey_data():
+def load_sankey_data_v2():
     dfs_behavior = []
     behavior_files = ["Shopify 2024 - Customer behavior.csv", "Shopify 2025 YTD - Customer behavior.csv"]
     for f in behavior_files:
@@ -249,7 +249,7 @@ def load_sankey_data():
     return beh_df, vis_df
 
 @st.cache_data
-def load_inventory_data():
+def load_inventory_data_v2():
     files = [
         "Shopify inventory_export_1.csv",
         "Shopify_inventory_export_1.csv"
@@ -275,13 +275,13 @@ def style_plotly_fig(fig):
     return fig
 
 try:
-    shopify_raw_df, order_lines_df = load_shopify_data()
-    meta_raw_df = load_meta_data()
-    awin_raw_df = load_awin_raw_data()
-    abandoned_df = load_abandoned_checkouts()
-    ga_merch_df = load_ga_merch_data()
-    inventory_df = load_inventory_data()
-    sankey_beh_df, sankey_vis_df = load_sankey_data()
+    shopify_raw_df, order_lines_df = load_shopify_data_v2()
+    meta_raw_df = load_meta_data_v2()
+    awin_raw_df = load_awin_raw_data_v2()
+    abandoned_df = load_abandoned_checkouts_v2()
+    ga_merch_df = load_ga_merch_data_v2()
+    inventory_df = load_inventory_data_v2()
+    sankey_beh_df, sankey_vis_df = load_sankey_data_v2()
     
     if shopify_raw_df.empty or meta_raw_df.empty:
         st.error("Could not load Core data files (Shopify or Meta v2). Please check file paths.")
