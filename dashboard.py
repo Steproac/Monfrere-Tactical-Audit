@@ -38,6 +38,15 @@ st.markdown("""
 
 st.title("Monfrère Tactical Audit (Shopify + Media Insights)")
 
+if st.sidebar.button("🔄 Refresh Data (Clear Cache)"):
+    st.cache_data.clear()
+
+def fix_mixed_types(df):
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
+    return df
+
 # --- CACHE DATA LOADERS ---
 @st.cache_data
 def load_shopify_data():
@@ -81,18 +90,21 @@ def load_abandoned_checkouts():
     return pd.DataFrame()
 
 @st.cache_data
-def load_meta_data():
-    # Cache Bust 1
+def load_meta_data_v3():
     files = [
         "Meta_Daily_MONFRERE-Ads-Fe-28-2023-Dec-31-2023 _v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2024-Dec-31-2024_v2.csv",
         "Meta_Daily_MONFRERE-Ads-Jan-1-2025-Dec-31-2025_v2.csv",
-        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv"
+        "Meta_Daily_MONFRERE-Ads-Jan-1-2026-Mar-29-2026_v2.csv",
+        "META MONFRERE-Ads-Jan-1-2026-May-11-2026.csv"
     ]
     dfs = []
+    usecols_meta = ['Reporting starts', 'Amount spent (USD)', 'Purchases', 'Purchase ROAS (return on ad spend)', 'Ad set name', 'Ad name']
     for f in files:
         if os.path.exists(f):
-            dfs.append(pd.read_csv(f, low_memory=False))
+            file_cols = pd.read_csv(f, nrows=0).columns.tolist()
+            actual_cols = [c for c in file_cols if c in usecols_meta]
+            dfs.append(pd.read_csv(f, usecols=actual_cols, low_memory=False))
             
     if not dfs:
         return pd.DataFrame()
@@ -102,7 +114,7 @@ def load_meta_data():
     meta_df['Amount spent (USD)'] = pd.to_numeric(meta_df['Amount spent (USD)'], errors='coerce').fillna(0)
     meta_df['Purchases'] = pd.to_numeric(meta_df['Purchases'], errors='coerce').fillna(0)
     meta_df['Reported ROAS'] = pd.to_numeric(meta_df.get('Purchase ROAS (return on ad spend)', 0), errors='coerce').fillna(0)
-    return meta_df.dropna(subset=['date'])
+    return fix_mixed_types(meta_df.dropna(subset=['date']))
 
 @st.cache_data
 def load_awin_raw_data():
@@ -243,7 +255,7 @@ def style_plotly_fig(fig):
 
 try:
     shopify_raw_df, order_lines_df = load_shopify_data()
-    meta_raw_df = load_meta_data()
+    meta_raw_df = load_meta_data_v3()
     awin_raw_df = load_awin_raw_data()
     abandoned_df = load_abandoned_checkouts()
     ga_merch_df = load_ga_merch_data()
